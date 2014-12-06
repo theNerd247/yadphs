@@ -1,3 +1,9 @@
+import Data.List 
+import Text.ParserCombinators.Parsec
+import Text.Parsec.Token
+import Text.Parsec
+import Text.Parsec.Text
+
 -- day of week structure
 data WDay = Sunday | Monday | Tuesday | Wednesday | Thursday | Friday | Saturday deriving (Show,Eq,Ord)
 
@@ -69,17 +75,35 @@ task date = Event date date Once
 
 -- a filter that grabs the events out of an event list such that each event's
 -- start date is within the given range
+-- the list that is returned is sorted
 filterEvents :: EventDate -> EventDate -> [Event] -> [Event]
 filterEvents _ _ [] = []
 filterEvents start end events = 
-	filter (\(Event x _ _) -> (start <= x) && (x <= end)) events
+	filter (\(Event x _ _) -> (start <= x) && (x <= end)) $ sort events
 
 -- a shortcut for creating event dates 
--- TODO: fis bug from <= , current fix: swapping Date nd Time value constructors
 eventDate :: Int -> Int -> Int -> Int -> Int -> EventDate 
 eventDate h mi mo d y = EventDate (Date mo d y) (Time h mi)
 
 -- testing variables
-es = map (\x -> task $ eventDate 10 30 x 01 14) [1..12]
+es = map (\x -> task $ eventDate 10 30 x 01 14) [12,11..1]
 start = eventDate 10 00 03 01 14
 end = eventDate 10 00 10 01 14
+
+-- parsing section
+{-line = do -}
+	{-p <- priority-}
+	{-d <- description-}
+	{-char '\n'-}
+	{-return (p:d)-}
+
+{-priority = do-}
+	{-char '('-}
+	{-prio <- upper-}
+	{-char ')'-}
+	{-return prio-}
+
+{-description :: GenParser Char st [Char]-}
+{-description :: Parser Char st [Char]-}
+description = many (noneOf ",\n")
+
