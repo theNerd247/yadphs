@@ -48,6 +48,7 @@ data EventFreq = Once | Daily | Weekly [WDay] | Biweekly [WDay] | Monthly |
 data Event = Event {startDate :: EventDate
                    , endDate :: EventDate
 									 , eventFreq :: EventFreq} deriving (Eq,Ord)
+
 instance Show Event where
 	show (Event s e f) = 
 		showString "Start: " $ 
@@ -63,6 +64,11 @@ instance Show Event where
 		showString (show e) $ 
 		showString "\n" $ 
 		show es
+
+data Task = Task
+	{priority :: Char
+	,description :: String
+ 	,eventInfo :: Maybe Event} 
 
 {-instance Show [Event] where -}
 
@@ -91,19 +97,4 @@ start = eventDate 10 00 03 01 14
 end = eventDate 10 00 10 01 14
 
 -- parsing section
-{-line = do -}
-	{-p <- priority-}
-	{-d <- description-}
-	{-char '\n'-}
-	{-return (p:d)-}
-
-{-priority = do-}
-	{-char '('-}
-	{-prio <- upper-}
-	{-char ')'-}
-	{-return prio-}
-
-{-description :: GenParser Char st [Char]-}
-{-description :: Parser Char st [Char]-}
-description = many (noneOf ",\n")
 
