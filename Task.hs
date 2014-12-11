@@ -1,3 +1,15 @@
+module Task 
+(
+filterEvents,
+eventDate,
+task,
+Time(Time),
+Date(Date),
+EventDate(EventDate),
+EventFreq,
+Event(Event)
+) where
+
 import Data.List 
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Token
@@ -84,9 +96,3 @@ filterEvents start end events =
 -- a shortcut for creating event dates 
 eventDate :: Int -> Int -> Int -> Int -> Int -> EventDate 
 eventDate h mi mo d y = EventDate (Date mo d y) (Time h mi)
-
--- testing variables
-es = map (\x -> task $ eventDate 10 30 x 01 14) [12,11..1]
-start = eventDate 10 00 03 01 14
-end = eventDate 10 00 10 01 14
-
