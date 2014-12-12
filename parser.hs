@@ -62,11 +62,38 @@ parseEvent = Event <$> do
 
 parseFrom = do
 	string "from"
-	opChar ':'
 	skipSpace
 	d1 <- parseDate
-	string "to" <|> string "-"
+	pTo
+	d2 <- parseDate
+	return (d1,d2)
 
+parseAt = do
+	string "at"
+	skipSpace
+	t1 <- parseTime
+	pTo
+	t2 <- parseTime
+	return (t1,t2)
+
+parseEvery = do
+	string "every"
+	skipSpace
+	freq <- parseFreq
+	option Nothing parseOn
+
+parseOn = do
+	string "on"
+	skipSpace
+	many1 $ choice $ string <$> ["Sun","Mon","Tue","Wed","Thr","Fri","Sat"]
+
+-- TODO: write freq choice code
+parseFreq = choice 
+
+pTo = do
+	skipSpace
+	string "to" <|> string "-"
+	skipSpace
 
 parseTask = task <$> do
 	string "due"
@@ -97,7 +124,6 @@ currentYear :: [Int]
 currentYear = unsafePerformIO $ (\(y,m,_) -> [lastDigits y, m]) 
 	<$> (toGregorian . utctDay) <$> getCurrentTime
 	
-
 lastDigits :: Integer -> Int
 lastDigits x = unDigits 10 $ drop 2 $ digits 10 $ fromInteger x
 
