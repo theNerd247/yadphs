@@ -109,8 +109,8 @@ allEvents (Event sd ed freq) =
 -- of all the days the event happens
 expandDays :: [Int] -> Day -> Day -> Integer -> [Day]
 expandDays _ _ _ 0 = []
-expandDays [] ds de k   = genDays k de ds
-expandDays days ds de k = concat $ genDays k de . (getFirstDay ds) <$> days
+expandDays [] ds de k   = sort $ nub $ genDays k de ds
+expandDays days ds de k = sort $ nub $ concat $ genDays k de . (getFirstDay ds) <$> days
 	where 
 		getFirstDay :: Day -> Int -> Day
 		getFirstDay ds d = addDays (toInteger $ (\(_,_,wds) -> firstDay wds d) $ toWeekDate ds) ds
