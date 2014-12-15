@@ -2,7 +2,7 @@
 -- TODO: document the parser for heaven's sake!!
 module Parser
 (
-csvFile
+todoEvents
 ) where
 
 import Control.Applicative 
@@ -18,28 +18,33 @@ import Data.Time.Clock
 import System.IO.Unsafe
 import Task
 
-data ParsedInfo = ParsedInfo Char T.Text (Maybe Event)
+data ParsedInfo = ParsedInfo Char String (Maybe Event)
 
 -- a testing function 
 tst x = maybeResult . (parse x) 
 
--- a parser for things whos order does not matter
+-- a parser for multiple things whos order does not matter
+-- those things must be of the same time
 noOrder p = many1 $ (skipSpace >> choice p)
+
+-- optional shortcut using Maybe monad
+possibly p = option Nothing (Just p)
 
 instance Show ParsedInfo where
 	show (ParsedInfo p d t) = 
 		showString (show p) $ 
-		showString (" " ++ show d) $
+		showString (" Desc: " ++ show d) $
 		show t -- our todo.txt file will have many lines
 
-csvFile = many' line
+-- parses a given file's text
+-- and then applies a given function to process the results
+todoEvents file  p = p <$> parse (many' line) file
 
 -- parses a task line
 line = do 
 	p <- option '\0' priority
 	d <- description
 	t <- option (Nothing) eventInfo 
-	option ' ' $ eol
 	return (ParsedInfo p d t)
 
 -- our end of line characters
@@ -48,9 +53,9 @@ eol = char '\n'
 
 -- parses the description of a task
 -- TODO: optimize this function
-description = do 
-	d <- manyTill (anyChar) (eitherP (endOfInput) (string "--")) 
-	return $ T.dropWhileEnd (=='\n') $ T.pack d --remove any trailing newline characters
+description = manyTill (anyChar) (char '\n')
+	{-skipSpace-}
+	{-return $ T.dropWhileEnd (=='\n') $ T.pack d --remove any trailing newline characters-}
 
 -- parses the priority of our task
 priority = do
@@ -60,52 +65,61 @@ priority = do
 	return prio
 
 --TODO: write this temp fix
-eventInfo = return $ Just . task $ eventDate 0 0 0 0 0
+eventInfo = parseEvent >>= return . Just
 
 -- TODO: rewrite so that the different parsers can lie out of order in the text
 -- stream (a search function maybe needed)
-parseEvent = Event <$> do
-	frq <- parseFreq
-	at <- parseAt
-	from <- parseFrom 
-	on <- parseOn
-
+parseEvent = parseTask <|> do
+	frq <- parseFreq -- daily,weekly,etc.
+	skipSpace
+	at <- parseAt -- at Time - Time
+	skipSpace
+	from <- parseFrom  -- from Date - Date
+	return $ Event (EventDate (fst from) (fst at)) (EventDate (snd from) (snd at)) frq
 
 parseFrom = do
-	string "from"
+	string "from" <|> string "on"
 	skipSpace
-	d1 <- parseDate
-	pTo
-	d2 <- parseDate
+	d1 <- parseDate 
+	d2 <- option d1 (do
+		pTo
+		d <- parseDate
+		return d)
 	return (d1,d2)
 
-parseAt = do
+parseAt = option (Time 0 0,Time 0 0) $ do
 	string "at"
 	skipSpace
 	t1 <- parseTime
+	skipSpace
 	pTo
+	skipSpace
 	t2 <- parseTime
 	return (t1,t2)
 
-parseEvery = do
-	string "every"
+parseFreq = option Once $ do
+	n <- parseNDays 
 	skipSpace
-	parseOn
+	d <- parseOnDays
+	return $ Every n d
 
-parseOn = do
+parseNDays = daily
+	<|> weekly
+	<|> biweekly
+	<|> nweeks
+
+parseOnDays = option [] $ do
 	string "on"
 	skipSpace
-	return parseWDay 
+	parseWDay 
 
-parseWDay = mwf
-	<|> tr
-	<|> weekend
-	<|> weekday
+parseWDay =	choice [mwf,tr,weekend,weekday]
 	<|> concat <$> noOrder [sun,mon,tue,wed,thu,fri,sat]
 
 -- parsers for which days the event takes place on
 mwf = string "MWF" >> return [1,3,5]
 tr = string "TR" >> return [2,4]
+everyday = string "everyday" >> return [1..7]
 weekend = string "weekends" >> return [6,7]
 weekday = string "weekdays" >> return [1..5]
 sun = day "sunday" <|> day "Sunday" >> return [7]
@@ -120,14 +134,17 @@ day s = string s
 	<|>	(string . TT.take 3) s
 	<|> (string . TT.take 2) s
 
-parseFreq = daily
-	<|> weekly
-	<|> biweekly
-
 -- parsers for the "every n days" of an event
 daily = string "daily" >> return 1
-weekly = string "weekly" >> return 7
+weekly = string "weekly" <|> string "every week" >> return 7
 biweekly = string "biweekly" <|> string "every other week" >> return 14
+nweeks = do 
+	string "every"
+	skipSpace
+	d <- toInteger . digitToInt <$> digit
+	skipSpace
+	string "week" <|> string "weeks"
+	return (d*7)
 
 pTo = do
 	skipSpace
@@ -137,12 +154,12 @@ pTo = do
 parseTask = task <$> do
 	string "due"
 	opChar ':'
-	skipMany $ char ' '
+	skipSpace
 	parseEventDate
 
 parseEventDate = option (eventDate 0 0 0 0 0) (do 
 	d <- parseDate
-	skipMany1 $ char ' '
+	skipSpace
 	t <- option (Time 0 0) parseTime
 	return $ EventDate d t)
 

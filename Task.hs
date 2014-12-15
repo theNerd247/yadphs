@@ -5,7 +5,7 @@ eventDate,
 task,
 Time(Time),
 EventDate(EventDate),
-EventFreq,
+EventFreq(Once,Every),
 Event(Event)
 ) where
 

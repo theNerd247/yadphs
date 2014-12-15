@@ -1,0 +1,12 @@
+Final Exam
+----------
+STRN: 12/08 1300
+DISC: 12/08 1800
+POLS: 12/09 1030
+
+(A) read GI
+(B) bcm web pages
+(B) write csewiki pages
+(B) bcm web image cacher/compressor
+(D) clean up email
+respond to vim-bootstrap issue

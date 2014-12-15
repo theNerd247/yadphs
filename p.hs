@@ -5,6 +5,7 @@ import qualified Data.Text.Lazy as T
 import Control.Applicative 
 import Data.Attoparsec.Text.Lazy
 import Data.Attoparsec.Combinator
+import Data.Text.Internal as TT
 
 tst1 = do
 	s <- string "aa"
@@ -16,5 +17,8 @@ tst2 = do
 	skipMany1 $ char ' '
 	return s
 
-search p end = match scan
-	where scan = (end) <|> (p >> scan)
+tst s =  t2 <$> parse t1 s 
+
+t1 = string "ab"
+
+t2 s = parse (char 'b') s
