@@ -7,18 +7,25 @@ import Data.Attoparsec.Text.Lazy
 import Data.Attoparsec.Combinator
 import Data.Text.Internal as TT
 
-tst1 = do
-	s <- string "aa"
-	skipMany1 $ char ' '
-	return s
+tst x = maybeResult . (parse x)
 
-tst2 = do
-	s <- string "bb" <|> string "cc"
-	skipMany1 $ char ' '
-	return s
+t1 = do
+	p <- priority
+	d <- description
+	eol
+	return (p,d)
 
-tst s =  t2 <$> parse t1 s 
+eol = char '\n' 
+	<|> char '\r'
 
-t1 = string "ab"
+description = takeTill e 
+	where e c = c == '\n' || c == '-'
+	{-skipSpace-}
+	{-return $ T.dropWhileEnd (=='\n') $ T.pack d --remove any trailing newline characters-}
 
-t2 s = parse (char 'b') s
+-- parses the priority of our task
+priority = do
+	char '('
+	prio <- satisfy $ inClass "A-Z"	
+	char ')'
+	return prio

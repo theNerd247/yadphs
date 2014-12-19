@@ -2,7 +2,9 @@
 -- TODO: document the parser for heaven's sake!!
 module Parser
 (
-todoEvents
+getEvents,
+getEventDate,
+ParsedInfo(ParsedInfo,prio,desc,evnt)
 ) where
 
 import Control.Applicative 
@@ -13,12 +15,13 @@ import Data.Digits
 import Data.List
 import qualified Data.Text as TT (take)
 import qualified Data.Text.Lazy as T
+import qualified Data.Text.Internal as TTT
 import Data.Time.Calendar
 import Data.Time.Clock
 import System.IO.Unsafe
 import Task
 
-data ParsedInfo = ParsedInfo Char String (Maybe Event)
+data ParsedInfo = ParsedInfo {prio :: Char, desc :: TTT.Text, evnt :: Maybe Event}
 
 -- a testing function 
 tst x = maybeResult . (parse x) 
@@ -36,12 +39,23 @@ instance Show ParsedInfo where
 		showString (" Desc: " ++ show d) $
 		show t -- our todo.txt file will have many lines
 
+getEvents = evs . parse parseFile 
+getEventDate = evs . parse parseEventDate 
+
+evs (Done i r) = r
+
 -- parses a given file's text
 -- and then applies a given function to process the results
-todoEvents file  p = p <$> parse (many' line) file
+parseFile = manyTill line endOfInput
+
+t1 = do 
+	l1 <- line
+	l2 <- line
+	return (l1,l2)
 
 -- parses a task line
 line = do 
+	option ' ' eol
 	p <- option '\0' priority
 	d <- description
 	t <- option (Nothing) eventInfo 
@@ -53,7 +67,8 @@ eol = char '\n'
 
 -- parses the description of a task
 -- TODO: optimize this function
-description = manyTill (anyChar) (char '\n')
+description = takeTill e 
+	where e c = c == '\n' || c == '-'
 	{-skipSpace-}
 	{-return $ T.dropWhileEnd (=='\n') $ T.pack d --remove any trailing newline characters-}
 
@@ -64,8 +79,7 @@ priority = do
 	char ')'
 	return prio
 
---TODO: write this temp fix
-eventInfo = parseEvent >>= return . Just
+eventInfo = string "-" *> skipSpace *> (Just <$> parseEvent)
 
 -- TODO: rewrite so that the different parsers can lie out of order in the text
 -- stream (a search function maybe needed)

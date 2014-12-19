@@ -1,5 +1,6 @@
 module Task 
 (
+allEvents,
 filterEvents,
 eventDate,
 task,
@@ -78,7 +79,7 @@ task date = Event date date Once
 filterEvents :: EventDate -> EventDate -> [Event] -> [Event]
 filterEvents _ _ [] = []
 filterEvents start end events = 
-	filter (\(Event x _ _) -> (start <= x) && (x <= end)) $ sort events
+	filter (\(Event {startDate = x}) -> (start <= x) && (x <= end)) $ sort events
 
 -- a shortcut for creating event dates 
 eventDate :: Int -> Int -> Int -> Int -> Int -> EventDate 
@@ -99,10 +100,10 @@ addEventDays n e = EventDate (addDays n $ date e) (time e)
 allEvents :: Event -> [Event]
 allEvents e 
 	| (eventFreq e) == Once = [e]
+
 allEvents (Event sd ed freq) = 
 	(\d -> makeOnceEvent (EventDate d (time sd)) (EventDate d (time ed)))
 	<$> expandDays (onDays freq) (date $ sd) (date $ ed) (nDays freq)
-
 
 -- expandDays takes a list of week days (sunday = 0, Saturday = 7), a start day,
 -- an end day and the frequency of the event (every n days) and generates a list
