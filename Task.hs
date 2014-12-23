@@ -1,13 +1,14 @@
 module Task 
 (
-allEvents,
-filterEvents,
-eventDate,
-task,
-Time(Time,hour,minute),
-EventDate(EventDate,date,time),
-EventFreq(Once,Every),
-Event(Event,startDate,endDate)
+allEvents
+,filterEvents
+,eventDate
+,task
+,Time(Time,hour,minute)
+,EventDate(EventDate,date,time)
+,EventFreq(Once,Every)
+,Event(Event,startDate,endDate)
+,sortByDays
 ) where
 
 import Control.Applicative
@@ -64,7 +65,7 @@ instance Show Event where
 		showString $
 		showString (show e) $ 
 		showString "\n" $ 
-		show es  
+		(show es)
 
 -- TODO: see about rewriting this function as a type as that's what the goal of
 -- this function is.  
@@ -72,6 +73,15 @@ instance Show Event where
 -- last any time. The EventDate is the task's due date
 task :: EventDate -> Event 
 task date = Event date date Once
+
+-- sort a list of events by days
+sortByDays :: [Event] -> [[Event]]
+sortByDays [] = []
+sortByDays [e] = [[e]]
+sortByDays lst@(e:es) = (fst el):(sortByDays $ snd el)
+	where 
+		el = span sameDate lst
+		sameDate = (==) (date $ startDate e) . date . startDate
 
 -- a filter that grabs the events out of an event list such that each event's
 -- start date is within the given range

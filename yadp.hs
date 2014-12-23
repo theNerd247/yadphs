@@ -6,6 +6,7 @@ import Control.Applicative
 import Data.Maybe
 import System.Environment
 import DayDraw
+import Data.List (sort)
 
 grabEvents :: String -> [Event]
 grabEvents = Prelude.concat . (allEvents <$>) . catMaybes . (evnt <$>) . getEvents . pack
@@ -13,10 +14,13 @@ grabEvents = Prelude.concat . (allEvents <$>) . catMaybes . (evnt <$>) . getEven
 grabEventDate :: String -> IO EventDate
 grabEventDate = return . getEventDate . pack 
 
+genRangeEvents :: String -> EventDate -> EventDate -> String
+genRangeEvents file sd ed = printAsWeeks $ sortByDays $ filterEvents sd ed $ grabEvents file
+
 main = do
 	args <- getArgs
 	sd <- grabEventDate (args !! 1)
 	ed <- grabEventDate (args !! 2)
-	file <- readFile (args !! 0)
-	putStrLn $ printDay $ filterEvents sd ed $ grabEvents file 
+	file <- readFile "todo.txt"
+	putStrLn $ genRangeEvents file sd ed
 	return ()

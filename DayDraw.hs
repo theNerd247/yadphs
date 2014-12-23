@@ -1,6 +1,7 @@
 module DayDraw 
 (
 printDay
+,printAsWeeks
 )
 where
 import Task
@@ -10,7 +11,8 @@ import Control.Applicative
 vcolChar = '|'
 rowChar = '-'
 colWidth = 20
-minutesPerLine = 15 
+minutesPerLine = 5
+tMax = div (60*24+59) minutesPerLine
 
 type DayBlock = [Int]
 
@@ -43,7 +45,7 @@ showDayBlock (nb:lst@(n:ns)) =
 -- do not directly call showDayBlock
 showDay :: [Int] -> String
 showDay ns = showDayBlock (0:ns) 
-	++ (concat $ replicate (24-(maximum ns)) blankLine)
+	++ (concat $ replicate (tMax-(maximum ns)) blankLine)
 
 -- converts a time into the proper y dimensions for the graph
 timeHeight :: Time -> Int
@@ -52,8 +54,13 @@ timeHeight Time {hour = h, minute = m} = div (60*h+m) minutesPerLine
 eventHeight :: Event -> [Int]
 eventHeight Event {startDate = sd, endDate = ed} = [timeHeight $ (time sd), timeHeight $ (time ed)]
 
+-- convert events into a list of days
 printDay :: [Event] -> String
 printDay  = showDay . sort . concat . (eventHeight <$>)
+
+-- print a list of days (each day is a list of events) in weekly format
+printAsWeeks :: [[Event]] -> String
+printAsWeeks = formatWeek . (printDay <$>)
 
 formatWeek :: [String] -> String
 formatWeek [] = ""
