@@ -4,10 +4,10 @@ allEvents,
 filterEvents,
 eventDate,
 task,
-Time(Time),
-EventDate(EventDate),
+Time(Time,hour,minute),
+EventDate(EventDate,date,time),
 EventFreq(Once,Every),
-Event(Event)
+Event(Event,startDate,endDate)
 ) where
 
 import Control.Applicative
