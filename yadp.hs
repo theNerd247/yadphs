@@ -6,21 +6,30 @@ import Control.Applicative
 import Data.Maybe
 import System.Environment
 import DayDraw
-import Data.List (sort)
+import Data.List (sort,partition)
 
-grabEvents :: String -> [Event]
-grabEvents = Prelude.concat . (allEvents <$>) . catMaybes . (evnt <$>) . getEvents . pack
+taskData :: String -> [ParsedInfo]
+taskData = getLineInfo . pack
 
-grabEventDate :: String -> IO EventDate
-grabEventDate = return . getEventDate . pack 
+readEventDate :: String -> IO EventDate
+readEventDate = return . getEventDate . pack 
 
-genRangeEvents :: String -> EventDate -> EventDate -> String
-genRangeEvents file sd ed = printAsWeeks $ sortByDays $ filterEvents sd ed $ grabEvents file
+-- seperate out tasks with and without event info attached
+seperateEvents :: [ParsedInfo] -> ([ParsedInfo],[ParsedInfo])
+seperateEvents = Data.List.partition $ isJust . evnt
+
+genEvents :: EventDate -> EventDate -> ParsedInfo -> [(String,Event)]
+genEvents sd ed p = uniZip (unpack $ desc p) 
+	$ (allEvents ed <$>) . filterEvents sd ed . fromJust
+
+uniZip :: a -> [b] -> [(a,b)]
+uniZip _ [] = []
+uniZip a (x:xs) = (a,x) : uniZip a xs
 
 main = do
 	args <- getArgs
-	sd <- grabEventDate (args !! 1)
-	ed <- grabEventDate (args !! 2)
+	sd <- readEventDate (args !! 1)
+	ed <- readEventDate (args !! 2)
 	file <- readFile "todo.txt"
-	putStrLn $ genRangeEvents file sd ed
+	{-putStrLn $ genRangeEvents file sd ed-}
 	return ()

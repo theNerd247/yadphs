@@ -47,9 +47,11 @@ data EventFreq = Once | Every {nDays :: Integer, onDays :: [Int]} deriving (Eq,S
 -- custom type to handle task info
 -- an event is simply the combination of a start and end date, and a frequency
 -- at which the even occurs
-data Event = Event {startDate :: EventDate
-                   , endDate :: EventDate
-									 , eventFreq :: EventFreq} deriving (Eq,Ord)
+data Event = Event 
+	{startDate :: EventDate
+	, endDate :: EventDate
+	, eventFreq :: EventFreq
+	} deriving (Eq,Ord)
 
 instance Show Event where
 	show (Event s e f) = 
@@ -107,13 +109,15 @@ makeOnceEvent s e
 addEventDays :: Integer -> EventDate -> EventDate
 addEventDays n e = EventDate (addDays n $ date e) (time e)
 
-allEvents :: Event -> [Event]
-allEvents e 
+-- generate all once events for a given event with a certain frequency
+-- that occure before an end day
+allEvents :: EventDate -> Event -> [Event]
+allEvents _ e 
 	| (eventFreq e) == Once = [e]
 
-allEvents (Event sd ed freq) = 
-	(\d -> makeOnceEvent (EventDate d (time sd)) (EventDate d (time ed)))
-	<$> expandDays (onDays freq) (date $ sd) (date $ ed) (nDays freq)
+allEvents EventDate {date = ed} (Event {eventFreq = freq,startDate = fsd, endDate = fed})= 
+	(\d -> makeOnceEvent (EventDate d (time fsd)) (EventDate d (time fed)))
+	<$> expandDays (onDays freq) (date $ fsd) ed (nDays freq)
 
 -- expandDays takes a list of week days (sunday = 0, Saturday = 7), a start day,
 -- an end day and the frequency of the event (every n days) and generates a list

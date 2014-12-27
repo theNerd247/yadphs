@@ -2,7 +2,7 @@
 -- TODO: document the parser for heaven's sake!!
 module Parser
 (
-getEvents,
+getLineInfo,
 getEventDate,
 ParsedInfo(ParsedInfo,prio,desc,evnt)
 ) where
@@ -39,7 +39,7 @@ instance Show ParsedInfo where
 		showString (" Desc: " ++ show d) $
 		show t -- our todo.txt file will have many lines
 
-getEvents = evs . parse parseFile 
+getLineInfo = evs . parse parseFile 
 getEventDate = evs . parse parseEventDate 
 
 evs (Done i r) = r

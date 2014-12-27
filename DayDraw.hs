@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module DayDraw 
 (
 printDay
@@ -6,15 +7,29 @@ printDay
 where
 import Task
 import Data.List
+import Data.Text (count,pack)
 import Control.Applicative
 
 vcolChar = '|'
 rowChar = '-'
 colWidth = 20
-minutesPerLine = 5
+minutesPerLine = 60
 tMax = div (60*24+59) minutesPerLine
 
-type DayBlock = [Int]
+data EventText = EventText
+	{stTime :: Int -- starting height of the day block
+	, endTime :: Int -- ending height of the day block
+	, desc :: String -- this is the formatted version of an Event Description
+	}
+
+instance Show EventText where	
+	show e = 
+		showString (lineAtHeight $ stTime e)
+		$ showString (desc e)
+		$ lineAtHeight (endTime e)
+	showList = showString . foldl (\x y -> x ++ (show y)) ""
+
+type DayText = [EventText]
 
 dayLine :: String -> String
 dayLine s = 
@@ -34,32 +49,45 @@ lineAtHeight (-1) = ""
 lineAtHeight n = 
 	showString (concat $ replicate n blankLine) line
 
-showDayBlock :: [Int] -> String
-showDayBlock [] = ""
-showDayBlock [a] = ""
-showDayBlock (nb:lst@(n:ns)) = 
-	showString (lineAtHeight (n-nb-1))
-	$ showDayBlock lst
+printDesc :: String -> String
+printDesc [] = ""
+printDesc d 
+	| l < ll = dayLine $ d ++ (replicate (ll-l) ' ')
+	| otherwise = (dayLine $ fst spn) ++ (printDesc $ snd spn)
+	where 
+		l = length d
+		ll = colWidth-2
+		spn = splitAt ll d
 
--- wrapper around showDayBlock this is the safe function to use
--- do not directly call showDayBlock
-showDay :: [Int] -> String
-showDay ns = showDayBlock (0:ns) 
-	++ (concat $ replicate (tMax-(maximum ns)) blankLine)
+makeEventText :: (String,Event) -> EventText
+makeEventText (d,e) = EventText st et ds
+	where 
+		st = timeHeight (time . startDate $ e)
+		dt = nlines ds
+		ds = printDesc d
+		et = timeHeight (time . endDate $ e) - st - dt
+
+nlines = count "\n" . pack
 
 -- converts a time into the proper y dimensions for the graph
 timeHeight :: Time -> Int
 timeHeight Time {hour = h, minute = m} = div (60*h+m) minutesPerLine
 
-eventHeight :: Event -> [Int]
-eventHeight Event {startDate = sd, endDate = ed} = [timeHeight $ (time sd), timeHeight $ (time ed)]
-
 -- convert events into a list of days
-printDay :: [Event] -> String
-printDay  = showDay . sort . concat . (eventHeight <$>)
+printDay :: [(String,Event)] -> String
+printDay = show . norm . (makeEventText <$>)
+
+norm e = normalize $ EventText 0 0 "" : e
+
+normalize :: [EventText] -> [EventText]
+normalize [e] = []
+normalize (eb:lst@(e:es)) = (e `sub` eb) : normalize lst
+
+sub :: EventText -> EventText -> EventText
+sub (EventText {stTime = sta,endTime = et,desc = d}) (EventText {stTime = stb}) = EventText (sta - stb-1) et d
 
 -- print a list of days (each day is a list of events) in weekly format
-printAsWeeks :: [[Event]] -> String
+printAsWeeks :: [[(String,Event)]] -> String
 printAsWeeks = formatWeek . (printDay <$>)
 
 formatWeek :: [String] -> String
