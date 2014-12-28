@@ -8,15 +8,10 @@ allEvents
 ,EventDate(EventDate,date,time)
 ,EventFreq(Once,Every)
 ,Event(Event,startDate,endDate)
-,sortByDays
 ) where
 
 import Control.Applicative
 import Data.List 
-import Text.ParserCombinators.Parsec
-import Text.Parsec.Token
-import Text.Parsec
-import Text.Parsec.Text
 import Data.Time.Calendar
 import Data.Time.Calendar.WeekDate
 
@@ -75,15 +70,6 @@ instance Show Event where
 -- last any time. The EventDate is the task's due date
 task :: EventDate -> Event 
 task date = Event date date Once
-
--- sort a list of events by days
-sortByDays :: [Event] -> [[Event]]
-sortByDays [] = []
-sortByDays [e] = [[e]]
-sortByDays lst@(e:es) = (fst el):(sortByDays $ snd el)
-	where 
-		el = span sameDate lst
-		sameDate = (==) (date $ startDate e) . date . startDate
 
 -- a filter that grabs the events out of an event list such that each event's
 -- start date is within the given range

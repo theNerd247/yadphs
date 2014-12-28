@@ -9,19 +9,17 @@ ParsedInfo(ParsedInfo,prio,desc,evnt)
 
 import Control.Applicative 
 import Data.Attoparsec.Combinator
-import Data.Attoparsec.Text.Lazy 
+import Data.Attoparsec.Text
 import Data.Char
 import Data.Digits
 import Data.List
-import qualified Data.Text as TT (take)
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Internal as TTT
+import qualified Data.Text as T 
 import Data.Time.Calendar
 import Data.Time.Clock
 import System.IO.Unsafe
 import Task
 
-data ParsedInfo = ParsedInfo {prio :: Char, desc :: TTT.Text, evnt :: Maybe Event}
+data ParsedInfo = ParsedInfo {prio :: Char, desc :: T.Text, evnt :: Maybe Event}
 
 -- a testing function 
 tst x = maybeResult . (parse x) 
@@ -39,10 +37,12 @@ instance Show ParsedInfo where
 		showString (" Desc: " ++ show d) $
 		show t -- our todo.txt file will have many lines
 
-getLineInfo = evs . parse parseFile 
-getEventDate = evs . parse parseEventDate 
+getLineInfo = evs [] . parse parseFile 
+getEventDate = evs (eventDate 0 0 0 0 0) . parse parseEventDate 
 
-evs (Done i r) = r
+evs a (Partial e) = evs a $ e ""
+evs a (Fail _ _ _) = a
+evs a (Done i r) = r
 
 -- parses a given file's text
 -- and then applies a given function to process the results
@@ -145,8 +145,8 @@ fri = day "friday" <|> day "Friday" >> return [5]
 sat = day "saturday" <|> day "Saturday" >> return [6]
 
 day s = string s 
-	<|>	(string . TT.take 3) s
-	<|> (string . TT.take 2) s
+	<|>	(string . T.take 3) s
+	<|> (string . T.take 2) s
 
 -- parsers for the "every n days" of an event
 daily = string "daily" >> return 1
