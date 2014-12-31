@@ -10,10 +10,22 @@ import Data.List
 import Data.Text (count,pack)
 import Control.Applicative
 
+data Yadp = Yadp (String,Event)
+
+dscr (Yadp (s,_)) = s
+event (Yadp (_,e)) = e
+toTup (Yadp a) = a
+
+instance Eq Yadp where
+	(==) (Yadp (_,a)) (Yadp (s,b)) = a == b
+
+instance Ord Yadp where
+	compare (Yadp (_,a)) (Yadp (_,b)) = compare a b
+
 vcolChar = '|'
 rowChar = '-'
 colWidth = 20
-minutesPerLine = 60
+minutesPerLine = 30 
 tMax = div (60*24+59) minutesPerLine
 
 data EventText = EventText
@@ -75,7 +87,12 @@ timeHeight Time {hour = h, minute = m} = div (60*h+m) minutesPerLine
 
 -- convert events into a list of days
 printDay :: [(String,Event)] -> String
-printDay = show . norm . (makeEventText <$>)
+printDay es = (show $ norm $ a)
+	++ (concat $ replicate (tMax - (maxi a)) blankLine)
+	where a = makeEventText <$> es
+
+maxi :: [EventText] -> Int
+maxi = endTime . max
 
 norm e = normalize $ EventText 0 0 "" : e
 

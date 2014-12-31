@@ -19,19 +19,19 @@ readEventDate = return . getEventDate . T.pack
 seperateEvents :: [ParsedInfo] -> ([ParsedInfo],[ParsedInfo])
 seperateEvents = Data.List.partition $ isJust . evnt
 
-genEvents :: EventDate -> EventDate -> [ParsedInfo] -> [[(String,Event)]]
-genEvents s e = sortByDays . concat . (genEvent s e <$>)
+genEvents :: EventDate -> EventDate -> [ParsedInfo] -> [[Yadp]]
+genEvents s e = sortByDays . sort . concat . (genEvent s e <$>)
 
 -- sort a list of events by days
-sortByDays :: [(String,Event)] -> [[(String,Event)]]
+sortByDays :: [Yadp] -> [[Yadp]]
 sortByDays [] = []
-sortByDays l@([(s,e)]) = [l]
+sortByDays l@([Yadp (s,e)]) = [l]
 sortByDays lst@(e:es) = (fst el):(sortByDays $ snd el)
 	where 
 		el = span sameDate lst
-		sameDate = (==) (date $ startDate $ snd e) . date . startDate . snd
+		sameDate = (==) (date $ startDate $ event e) . date . startDate . event
 
-genEvent :: EventDate -> EventDate -> ParsedInfo -> [(String,Event)]
+genEvent :: EventDate -> EventDate -> ParsedInfo -> [Yadp]
 genEvent sd ed p = uniZip (T.unpack $ desc p) 
 	$ filterEvents sd ed 
 	$ allEvents ed
@@ -40,13 +40,20 @@ genEvent sd ed p = uniZip (T.unpack $ desc p)
 
 printData :: EventDate -> EventDate -> String -> String
 printData sd ed s = printAsWeeks 
+	$ ((toTup <$>) <$>)
 	$ genEvents sd ed 
 	$ fst sepEs
 	where sepEs = seperateEvents . taskData $ s
 
-uniZip :: a -> [b] -> [(a,b)]
+uniZip :: String -> [Event] -> [Yadp]
 uniZip _ [] = []
-uniZip a (x:xs) = (a,x) : uniZip a xs
+uniZip a (x:xs) = Yadp (a,x) : uniZip a xs
+
+tst :: EventDate -> EventDate -> String -> [[Yadp]]
+tst sd ed file = genEvents sd ed 
+	$ fst
+	$ seperateEvents
+	$ taskData file
 
 main = do
 	args <- getArgs
