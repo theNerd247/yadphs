@@ -2,7 +2,7 @@
 module Task 
 (
 Task(Task,event,prio,desc)
-,Tasks(Tasks)
+,Tasks(Tasks,taskTsk)
 ,Priority(Priority,NoPrio)
 ,task
 ,Time(Time,hour,minute)
@@ -11,6 +11,9 @@ Task(Task,event,prio,desc)
 ,Event(NoEvent)
 ,mkEvent
 ,eventDate
+,formatWeek
+,showTasks
+,getTasks
 ) where
 
 import Control.Applicative
@@ -161,7 +164,7 @@ zipDays (d:ds) = zipWith (++) d (zipDays ds)
 vcolChar = '|'
 rowChar = '-'
 colWidth = 20
-minutesPerLine = 60 
+minutesPerLine = 15 
 linesPerDay = div 1440 minutesPerLine
 
 dayLine :: String -> String
@@ -224,7 +227,7 @@ eventDate h mi mo d y = EventDate (fromGregorian (toInteger y) mo d) (Time h mi)
 mkEvent :: EventDate -> EventDate -> Event
 mkEvent a b = Event (toEventNum a) (toEventNum b) a b
 
-data Tasks = Tasks EventFreq Task
+data Tasks = Tasks {evnFreq ::EventFreq, taskTsk ::Task}
 
 -- given a start and end date, and a list of Tasks generate the cooresponding
 -- list of tasks
