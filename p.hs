@@ -7,6 +7,15 @@ import Data.Attoparsec.Text.Lazy
 import Data.Attoparsec.Combinator
 import Data.Text.Internal as TT
 
+data Ta = Ta (Int,Int) deriving (Show)
+
+data B = B Int Int deriving (Eq,Ord)
+
+data A = A {x :: Int, y :: Int} deriving (Eq,Ord,Show)
+
+instance Num Ta where
+	(-) (Ta (a,b)) (Ta (c,d)) = Ta (a-c,b-d)
+
 tst x = maybeResult . (parse x)
 
 t1 = do
@@ -29,3 +38,4 @@ priority = do
 	prio <- satisfy $ inClass "A-Z"	
 	char ')'
 	return prio
+

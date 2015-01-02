@@ -4,7 +4,6 @@ module Parser
 (
 getLineInfo,
 getEventDate,
-ParsedInfo(ParsedInfo,prio,desc,evnt)
 ) where
 
 import Control.Applicative 
@@ -19,8 +18,6 @@ import Data.Time.Clock
 import System.IO.Unsafe
 import Task
 
-data ParsedInfo = ParsedInfo {prio :: Char, desc :: T.Text, evnt :: Maybe Event}
-
 -- a testing function 
 tst x = maybeResult . (parse x) 
 
@@ -30,12 +27,6 @@ noOrder p = many1 $ (skipSpace >> choice p)
 
 -- optional shortcut using Maybe monad
 possibly p = option Nothing (Just p)
-
-instance Show ParsedInfo where
-	show (ParsedInfo p d t) = 
-		showString (show p) $ 
-		showString (" Desc: " ++ show d) $
-		show t -- our todo.txt file will have many lines
 
 getLineInfo = evs [] . parse parseFile 
 getEventDate = evs (eventDate 0 0 0 0 0) . parse parseEventDate 
@@ -56,10 +47,10 @@ t1 = do
 -- parses a task line
 line = do 
 	option ' ' eol
-	p <- option '\0' priority
+	p <- option NoPrio priority
 	d <- description
-	t <- option (Nothing) eventInfo 
-	return (ParsedInfo p d t)
+	e <- option (Once,NoEvent) eventInfo 
+	return $ Tasks (fst e) (Task p d (snd e))
 
 -- our end of line characters
 eol = char '\n' 
@@ -77,9 +68,9 @@ priority = do
 	char '('
 	prio <- satisfy $ inClass "A-Z"	
 	char ')'
-	return prio
+	return $ Priority prio
 
-eventInfo = string "-" *> skipSpace *> (Just <$> parseEvent)
+eventInfo = string "-" *> skipSpace *> parseEvent
 
 -- TODO: rewrite so that the different parsers can lie out of order in the text
 -- stream (a search function maybe needed)
@@ -89,7 +80,7 @@ parseEvent = parseTask <|> do
 	at <- parseAt -- at Time - Time
 	skipSpace
 	from <- parseFrom  -- from Date - Date
-	return $ Event (EventDate (fst from) (fst at)) (EventDate (snd from) (snd at)) frq
+	return $ (frq,mkEvent (EventDate (fst from) (fst at)) (EventDate (snd from) (snd at)))
 
 parseFrom = do
 	string "from" <|> string "on"
@@ -165,11 +156,12 @@ pTo = do
 	string "to" <|> string "-"
 	skipSpace
 
-parseTask = task <$> do
+parseTask = do
 	string "due"
 	opChar ':'
 	skipSpace
-	parseEventDate
+	d <- parseEventDate
+	return $ (Once,task d)
 
 parseEventDate = option (eventDate 0 0 0 0 0) (do 
 	d <- parseDate
