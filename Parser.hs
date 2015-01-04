@@ -3,7 +3,7 @@
 module Parser
 (
 getLineInfo,
-getEventDate,
+getDate,
 ) where
 
 import Control.Applicative 
@@ -29,7 +29,7 @@ noOrder p = many1 $ (skipSpace >> choice p)
 possibly p = option Nothing (Just p)
 
 getLineInfo = evs [] . parse parseFile 
-getEventDate = evs (eventDate 0 0 0 0 0) . parse parseEventDate 
+getDate = evs (fromGregorian 0 0 0) . parse parseDate
 
 evs a (Partial e) = evs a $ e ""
 evs a (Fail _ _ _) = a
