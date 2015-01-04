@@ -212,7 +212,7 @@ toTime n = Time h m
 vcolChar = '|'
 rowChar = '-'
 colWidth = 20
-minutesPerLine = 30
+minutesPerLine = 15 
 linesPerDay = div 1440 minutesPerLine
 
 dayLine :: String -> String

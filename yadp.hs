@@ -29,18 +29,18 @@ printData a b = formatWeek . showTasks (edate a) (edate b) . getTasks
 
 edate x = EventDate x $ Time 0 0 
 
-tst sd ed file = printData sd ed $ fst $ seperateEvents $ taskData file
+printWeeks sd ed file = printData sd ed $ fst $ seperateEvents $ taskData file
 
 f = unsafePerformIO $ readFile "todo.txt"
 sd = fromGregorian 2015 01 05
-ed = fromGregorian 2015 01 12
+ed = fromGregorian 2015 01 19
 
-prTst = putStrLn $ tst sd ed f
+prTst = putStrLn $ printWeeks sd ed f
 
 main = do
 	args <- getArgs
 	sd <- readDate (args !! 1)
 	ed <- readDate (args !! 2)
 	file <- readFile (args !! 0)
-	putStrLn $ printData sd ed $ fst $ seperateEvents $ taskData file
+	putStrLn $ printWeeks sd ed file
 	return ()
