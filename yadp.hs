@@ -48,8 +48,8 @@ tst = do
 	file <- readFile "todo.txt"
 	putStrLn $ printDayPlanner sd (addDay 1 ed) file
 
-sd = eventDate 8 0 01 04 2015 
-ed = eventDate 23 0 01 24 2015 
+sd = eventDate 0 0 01 04 2015 
+ed = eventDate 0 0 01 17 2015 
 
 main = do
 	args <- getArgs

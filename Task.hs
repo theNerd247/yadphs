@@ -214,37 +214,44 @@ printDate d =
 -- take a printed task(s) and format it in the form of a week
 -- each col is a day and each row is a week
 formatWeek :: (Day,Time,Time) -> String -> String
-formatWeek dd@(d,t1,t2) = (makeWeek t1 t2) . (makeDays dd) . lines
+formatWeek dd@(d,t1,t2) = (makeWeek t1 t2) . (makeDays d) . lines
 
-makeDays :: (Day,Time,Time) -> [String] -> [String]
+makeDays :: Day -> [String] -> [String]
 makeDays _ [] = []
-makeDays (dd,t1,t2) s = (printDate dd ++ (unlines $ ddd)) : makeDays (addDays 1 dd,t1,t2) (snd d)
+makeDays dd s = (printDate dd ++ (unlines $ fst d)) : makeDays (addDays 1 dd) (snd d)
 	where 
-		ddd = take (l2-l1+1) . drop (l1-1) $ fst d
 		d = splitAt linesPerDay s
+
+onlyTimes :: Time -> Time -> String -> String
+onlyTimes t1 t2 s = hd ++ "\n" ++ (unlines . take (l2-l1) . drop (l1+1) $ ls)
+	where
+		hd = head ls
+		ls = lines s
 		l1 = fromInteger $ toEventNum (EventDate (fromGregorian 0 0 0) t1)
-		l2 = fromInteger $ toEventNum (EventDate (fromGregorian 0 0 0) t2)
+		l2 = fromInteger $ toEventNum (EventDate (fromGregorian 0 0 0) end)
+		end 
+			| t2 == (Time 0 0) = Time 24 00
+	 		| otherwise = t2
 
 makeWeek :: Time -> Time -> [String] -> String
 makeWeek _ _ [] = ""
-makeWeek t1 t2 ds = showString (comDays $ dts:(fst dds))
+makeWeek t1 t2 ds = showString (onlyTimes t1 t2 da)
 	$ showString "\n" 
 	$ makeWeek t1 t2 (snd dds)
 	where	
-		dts = dayTimes (tToM t1) (tToM t2)
+		da = comDays $ dayTimes:(fst dds)
 		comDays = unlines . zipDays . (lines <$>)
 		dds = splitAt 7 ds
-		tToM (Time h m) = dv (60*h+m) minutesPerLine
 
 zipDays :: [[String]] -> [String]
 zipDays [d] = d
 zipDays (d:ds) = zipWith (++) d (zipDays ds)
 
-dayTimes :: Int -> Int -> String
-dayTimes a b = "      \n" ++ t a
+dayTimes :: String
+dayTimes = "      \n" ++ t 1
 	where 
 		t n 
-			| n == b = tm $ b*minutesPerLine 
+			| n == linesPerDay = tm $ linesPerDay*minutesPerLine 
 			| otherwise = showString (tm $ n*minutesPerLine) $ t (n+1)
 		tm x = showString (show $ toTime x) " \n"
 
