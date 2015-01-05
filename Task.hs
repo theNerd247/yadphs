@@ -17,6 +17,7 @@ Task(Task,event,prio,desc)
 ,getTasks
 ,printTTask
 ,addDay
+,isValidEvent
 ) where
 
 import Control.Applicative
@@ -248,7 +249,7 @@ zipDays [d] = d
 zipDays (d:ds) = zipWith (++) d (zipDays ds)
 
 dayTimes :: String
-dayTimes = "      \n" ++ t 0
+dayTimes = "      \n" ++ t 1
 	where 
 		t n 
 			| n == linesPerDay = tm $ linesPerDay*minutesPerLine 

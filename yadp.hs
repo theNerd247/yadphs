@@ -36,6 +36,7 @@ printWeeks ea eb = (formatWeek (a,t1,t2)) . showTasks (edate a) (edate b)
 printDayPlanner :: EventDate -> EventDate -> String -> String
 printDayPlanner a b fp = 
 	showString (printWeeks a b ets)
+	{-showString (show $ event <$> (filter (isValidEvent a b . event) ets))-}
 	$ showString "\n"
 	$ printTTask . sort $ tts
 	where 
@@ -45,7 +46,7 @@ printDayPlanner a b fp =
 ts fp = seperateEvents . taskData $ fp
 
 tst = do
-	file <- readFile "todo.txt"
+	file <- readFile "/home/noah/todo.txt"
 	putStrLn $ printDayPlanner sd (addDay 1 ed) file
 
 sd = eventDate 0 0 01 04 2015 

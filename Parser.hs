@@ -88,7 +88,7 @@ parseEvent = parseTask <|> do
 	skipSpace
 	at <- parseAt -- at Time - Time
 	skipSpace
-	from <- parseFrom  -- from Date - Date
+	from <- option (curDay,nxtYear) parseFrom  -- from Date - Date
 	return $ (frq,mkEvent (EventDate (fst from) (fst at)) (EventDate (snd from) (snd at)))
 
 parseFrom = do
@@ -105,11 +105,12 @@ parseAt = option (Time 0 0,Time 0 0) $ do
 	string "at"
 	skipSpace
 	t1 <- parseTime
-	skipSpace
-	pTo
-	skipSpace
-	t2 <- parseTime
+	t2 <- tm2 t1
 	return (t1,t2)
+
+tm2 t1 = option t1 $ do
+	pTo
+	parseTime
 
 parseFreq = option Once $ do
 	n <- parseNDays 
@@ -204,8 +205,12 @@ cy [y,m] mm
 	| otherwise = y
 
 currentYear :: [Int]
-currentYear = unsafePerformIO $ (\(y,m,_) -> [fromInteger y, m]) 
-	<$> (toGregorian . utctDay) <$> getCurrentTime
+currentYear = (\(y,m,_) -> [fromInteger y, m]) curTime
+
+curTime = unsafePerformIO $ (toGregorian . utctDay) <$> getCurrentTime
+
+curDay = addDays (-14) $ (\(y,m,d) -> fromGregorian y m d) curTime
+nxtYear = (\(y,m,d) -> fromGregorian (y+1) m d) curTime
 	
 -- parses text in hh:mm format
 parseTime :: Parser Time
