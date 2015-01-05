@@ -248,7 +248,7 @@ zipDays [d] = d
 zipDays (d:ds) = zipWith (++) d (zipDays ds)
 
 dayTimes :: String
-dayTimes = "      \n" ++ t 1
+dayTimes = "      \n" ++ t 0
 	where 
 		t n 
 			| n == linesPerDay = tm $ linesPerDay*minutesPerLine 
