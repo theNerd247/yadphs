@@ -12,35 +12,49 @@ import Data.Time.Calendar
 taskData :: String -> [Tasks]
 taskData = getLineInfo . T.pack
 
-readDate :: String -> IO Day
-readDate = return . getDate . T.pack 
+readDate :: String -> IO EventDate
+readDate = return . getEventDate . T.pack 
 
 -- seperate out tasks with and without event info attached
 -- tasks with event info are first
-seperateEvents :: [Tasks] -> ([Tasks],[Tasks])
-seperateEvents = Data.List.partition $ isEvent . event . taskTsk
+seperateEvents :: [Tasks] -> ([Task],[Task])
+seperateEvents = Data.List.partition (isEvent . event) . getTasks	
 	where	
 		isEvent e 
 			| e == NoEvent = False
 			| otherwise = True
 
-printData :: Day -> Day -> [Tasks] -> String
-printData a b = formatWeek . showTasks (edate a) (edate b) . getTasks
+printWeeks :: EventDate -> EventDate -> [Task] -> String
+printWeeks ea eb = (formatWeek (a,t1,t2)) . showTasks (edate a) (edate b)
+	where 
+		a = date ea
+		b = date eb
+		t1 = time ea
+		t2 = time eb
+		edate x = EventDate x $ Time 0 0
 
-edate x = EventDate x $ Time 0 0 
+printDayPlanner :: EventDate -> EventDate -> String -> String
+printDayPlanner a b fp = 
+	showString (printWeeks a b ets)
+	$ showString "\n"
+	$ printTTask . sort $ tts
+	where 
+		ets = fst $ ts fp 
+		tts = snd $ ts fp
 
-printWeeks sd ed file = printData sd ed $ fst $ seperateEvents $ taskData file
+ts fp = seperateEvents . taskData $ fp
 
-f = unsafePerformIO $ readFile "todo.txt"
-sd = fromGregorian 2015 01 05
-ed = fromGregorian 2015 01 19
+tst = do
+	file <- readFile "todo.txt"
+	putStrLn $ printDayPlanner sd (addDay 1 ed) file
 
-prTst = putStrLn $ printWeeks sd ed f
+sd = eventDate 8 0 01 04 2015 
+ed = eventDate 23 0 01 24 2015 
 
 main = do
 	args <- getArgs
 	sd <- readDate (args !! 1)
 	ed <- readDate (args !! 2)
 	file <- readFile (args !! 0)
-	putStrLn $ printWeeks sd ed file
+	putStrLn $ printDayPlanner sd (addDay 1 ed) file
 	return ()

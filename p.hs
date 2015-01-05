@@ -1,22 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Data.List
 import Data.Char
-import qualified Data.Text.Lazy as T
+import qualified Data.Text as T
 import Control.Applicative 
-import Data.Attoparsec.Text.Lazy
+import Data.Attoparsec.Text
 import Data.Attoparsec.Combinator
 import Data.Text.Internal as TT
 
-data Ta = Ta (Int,Int) deriving (Show)
+data B = Non | B {bl :: Int} deriving (Eq,Ord,Show)
 
-data B = B Int Int deriving (Eq,Ord)
-
-data A = A {x :: Int, y :: Int} deriving (Eq,Ord,Show)
-
-instance Num Ta where
-	(-) (Ta (a,b)) (Ta (c,d)) = Ta (a-c,b-d)
-
-tst x = maybeResult . (parse x)
+tst = parseOnly 
 
 t1 = do
 	p <- priority
@@ -39,3 +32,8 @@ priority = do
 	char ')'
 	return prio
 
+sscan = scan "" w
+	where 
+		w s c = p $ c:s
+		p "+-" = Nothing
+		p xs = Just xs

@@ -15,6 +15,8 @@ Task(Task,event,prio,desc)
 ,formatWeek
 ,showTasks
 ,getTasks
+,printTTask
+,addDay
 ) where
 
 import Control.Applicative
@@ -22,6 +24,7 @@ import Data.List
 import qualified Data.Text as T
 import Data.Time.Calendar
 import Data.Time.Calendar.WeekDate (toWeekDate)
+import Data.Time.Format
 
 -- time structure
 data Time = Time { hour :: Int 
@@ -44,6 +47,9 @@ data EventDate = EventDate
 	,time :: Time
 	} deriving (Eq,Ord,Show)
 
+addDay :: Integer -> EventDate -> EventDate
+addDay n (EventDate d t) = EventDate (addDays n d) t
+
 -- events can occur at different frequencies 
 -- an event can occure once, or every n days on a list of days (1 being monday,
 -- 7 being sunday) (the second parameter is optional)
@@ -58,10 +64,18 @@ data Event = NoEvent | Event
 	,eventEnd :: Integer
 	,startDate :: EventDate
 	,endDate :: EventDate
-	} deriving (Eq,Ord,Show)
+	} deriving (Eq,Show)
 
 instance Num Event where
 	(-) (Event es en a b) (Event {eventEnd = e}) = Event (es-e) (en-e) a b
+
+instance Ord Event where
+	(<=) NoEvent _ = True
+	(<=) _ NoEvent = False
+	(<=) e1 e2 = s1 <= s2
+		where 
+			s1 = startDate e1
+			s2 = startDate e2
 
 toEventNum :: EventDate -> Integer
 toEventNum (EventDate d t) =  ld + lt + ltm
@@ -75,11 +89,16 @@ toEventNum (EventDate d t) =  ld + lt + ltm
 
 dv a = round . ((realToFrac a)/) . realToFrac
 
-data Priority = NoPrio | Priority {pchar :: Char}
+data Priority = NoPrio | Priority {pchar :: Char} deriving (Eq)
 
 instance Show Priority where
 	show NoPrio = "---"
 	show (Priority {pchar = c}) = '(':c:")"
+
+instance Ord Priority where
+	(<=) NoPrio _ = False
+	(<=) _ NoPrio = True
+	(<=) (Priority a) (Priority b) = a <= b
 
 data Task = EmptyTask {event :: Event} | Task 
 	{prio :: Priority
@@ -88,29 +107,36 @@ data Task = EmptyTask {event :: Event} | Task
 	}
 
 instance Show Task where
-	show (EmptyTask _) = ""
-	show t = printTask t
-	showList es = showString "" -- use showTasks instead
+	show (EmptyTask e) = nblanklines . fromInteger . eventStart $ e
+	show t = printTask t  -- ony useful for Tasks with NoEvent
+	showList [] = showString ""
+	showList (e:es) = showString
+		$ showString (show $ prio e) 
+		$ show es
 
 instance Eq Task where
-	(==) (Task {event = e1}) (Task {event = e2}) = e1 == e2
+	(==) (Task {prio =p1,event = e1}) (Task {prio = p2,event = e2}) = e1 == e2 && p1 == p2
 
 instance Ord Task where
-	(<=) (Task {event = e1}) (Task {event = e2}) = l1 <= l2
-		where 
-			l1 = startDate e1
-			l2 = startDate e2
+	(<=) (Task {prio = p1,event = e1}) (Task {prio = p2, event = e2})
+		| e1 == e2 = p1 <= p2
+		| otherwise = e1 <= e2
 
 -- a method to "subtract" tasks
 subTask :: Task -> Task -> Task
+subTask (EmptyTask e) (Task p d ev) = EmptyTask (e-ev)
 subTask (Task p d ev) (EmptyTask e) = Task p d (ev-e)
 subTask (Task p d ev) (Task _ _ e) = Task p d (ev-e)
+
+printTTask :: [Task] -> String
+printTTask [] = ""
+printTTask (t:ts) = showString (show t) $ showString "\n" $ printTTask ts
 
 printTask :: Task -> String
 printTask (Task p d NoEvent) = 
 	showString (show p)
 	$ showString " "
-	$ T.unpack d
+	$ delete ' ' $ T.unpack d
 printTask t@(Task p dsc ev) 
 	| (startDate ev == endDate ev) = showTask t
 	| otherwise = showEvent t
@@ -144,63 +170,81 @@ showEvent (Task p dsc ev) =
 		en = eventEnd ev
 
 -- wrapper around printTasks
-showTasks a b e = 
-	showString t
-	$ nblanklines (n)
+showTasks :: EventDate -> EventDate -> [Task] -> String
+showTasks _ _ [] = ""
+showTasks a b es = printTasks a b (baseTask:e++[endTask])
 	where 
-		t = (printTasks a b (baseTask:e))
+		e = filter (isValidEvent a b . event) es
 		baseTask = EmptyTask (task a)
-		n = linesPerDay-nn
-		nn = snd . divMod (length . lines $ t) $ linesPerDay
+		endTask = EmptyTask (task b)
 
 printTasks :: EventDate -> EventDate -> [Task] -> String
 printTasks _ _ [] = ""
 printTasks a b [e] = ""
-printTasks a b (e:lst@(en:es)) = showString t $ printTasks a b lst
+printTasks a b (e:lst@(en:es)) = 
+	showString t 
+	$ printTasks a b lst
 	where 
 		t
-			| (isValidEvent a b $ event en) == False = ""
 			| es == [] = s 
 			| hlss == 0 = unlines . init . lines $ s
 			| otherwise = s
 		s = show $ subTask en e
 		hlss = eventStart . event $ subTask hls en
 		hls = head es
-		ens = endDate . event $ en
 
 -- tests whether the given event intersects with the given time range where a <
 -- b
 isValidEvent :: EventDate -> EventDate -> Event -> Bool
 isValidEvent a b (Event {startDate = sd,endDate = ed}) = not $ (ed < a) || (b < sd)
 
+printDate :: Day -> String
+printDate d = 
+	showString " "
+	$ showString wd
+	$ showString (replicate n ' ')
+	$ showString tm
+	$ " \n"
+	where 
+		locale = defaultTimeLocale
+		wd = formatTime locale "%A" d
+		tm = formatTime locale "%D" d
+		n = colWidth - 2 - ((length wd)+(length tm))
+
 -- take a printed task(s) and format it in the form of a week
 -- each col is a day and each row is a week
-formatWeek :: String -> String
-formatWeek = makeWeek . makeDays . lines
+formatWeek :: (Day,Time,Time) -> String -> String
+formatWeek dd@(d,t1,t2) = (makeWeek t1 t2) . (makeDays dd) . lines
 
-makeDays :: [String] -> [String]
-makeDays [] = []
-makeDays s = (unlines $ fst d) : makeDays (snd d)
+makeDays :: (Day,Time,Time) -> [String] -> [String]
+makeDays _ [] = []
+makeDays (dd,t1,t2) s = (printDate dd ++ (unlines $ ddd)) : makeDays (addDays 1 dd,t1,t2) (snd d)
 	where 
+		ddd = take (l2-l1+1) . drop (l1-1) $ fst d
 		d = splitAt linesPerDay s
+		l1 = fromInteger $ toEventNum (EventDate (fromGregorian 0 0 0) t1)
+		l2 = fromInteger $ toEventNum (EventDate (fromGregorian 0 0 0) t2)
 
-makeWeek :: [String] -> String
-makeWeek [] = ""
-makeWeek ds = showString (comDays $ dayTimes:(fst dds))
+makeWeek :: Time -> Time -> [String] -> String
+makeWeek _ _ [] = ""
+makeWeek t1 t2 ds = showString (comDays $ dts:(fst dds))
 	$ showString "\n" 
-	$ makeWeek (snd dds)
+	$ makeWeek t1 t2 (snd dds)
 	where	
+		dts = dayTimes (tToM t1) (tToM t2)
 		comDays = unlines . zipDays . (lines <$>)
 		dds = splitAt 7 ds
+		tToM (Time h m) = dv (60*h+m) minutesPerLine
 
 zipDays :: [[String]] -> [String]
 zipDays [d] = d
 zipDays (d:ds) = zipWith (++) d (zipDays ds)
 
-dayTimes = t 1
+dayTimes :: Int -> Int -> String
+dayTimes a b = "      \n" ++ t a
 	where 
 		t n 
-			| n == linesPerDay = tm $ linesPerDay*minutesPerLine 
+			| n == b = tm $ b*minutesPerLine 
 			| otherwise = showString (tm $ n*minutesPerLine) $ t (n+1)
 		tm x = showString (show $ toTime x) " \n"
 
@@ -277,7 +321,7 @@ eventDate h mi mo d y = EventDate (fromGregorian (toInteger y) mo d) (Time h mi)
 mkEvent :: EventDate -> EventDate -> Event
 mkEvent a b = Event (toEventNum a) (toEventNum b) a b
 
-data Tasks = Tasks {evnFreq ::EventFreq, taskTsk ::Task}
+data Tasks = Tasks {evnFreq ::EventFreq, taskTsk ::Task} deriving (Show)
 
 -- given a start and end date, and a list of Tasks generate the cooresponding
 -- list of tasks
@@ -346,7 +390,8 @@ eaa = eventDate 14 45 01 11 2015
 fre = Every 7 [1,3,5,7]
 ttsk1 = Tasks fre (Task p dsc evnt1)
 ttsk2 = Tasks (Every 2 []) (Task p dsc evnt2)
+ttsk3 = Tasks Once (Task p dsc NoEvent)
 
-tt = getTasks [ttsk1,ttsk2]
+tt = getTasks [ttsk1,ttsk2,ttsk3]
 
-ptst = putStrLn $ formatWeek $ showTasks a b tt
+{-ptst = putStrLn $ formatWeek $ showTasks a b tt-}

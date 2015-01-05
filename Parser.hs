@@ -3,7 +3,7 @@
 module Parser
 (
 getLineInfo,
-getDate,
+getEventDate,
 ) where
 
 import Control.Applicative 
@@ -29,7 +29,7 @@ noOrder p = many1 $ (skipSpace >> choice p)
 possibly p = option Nothing (Just p)
 
 getLineInfo = evs [] . parse parseFile 
-getDate = evs (fromGregorian 0 0 0) . parse parseDate
+getEventDate = evs (eventDate 0 0 0 0 0) . parse parseEventDate
 
 evs a (Partial e) = evs a $ e ""
 evs a (Fail _ _ _) = a
@@ -50,7 +50,15 @@ line = do
 	p <- option NoPrio priority
 	d <- description
 	e <- option (Once,NoEvent) eventInfo 
+	option ' ' eol
 	return $ Tasks (fst e) (Task p d (snd e))
+
+tt = do
+	p <- option NoPrio priority
+	d <- description
+	e <- eventInfo
+	option ' ' eol
+	return (p,d,e)
 
 -- our end of line characters
 eol = char '\n' 
@@ -59,7 +67,7 @@ eol = char '\n'
 -- parses the description of a task
 -- TODO: optimize this function
 description = takeTill e 
-	where e c = c == '\n' || c == '-'
+	where e c = c == '\n' || c == ':'
 	{-skipSpace-}
 	{-return $ T.dropWhileEnd (=='\n') $ T.pack d --remove any trailing newline characters-}
 
@@ -70,7 +78,8 @@ priority = do
 	char ')'
 	return $ Priority prio
 
-eventInfo = string "-" *> skipSpace *> parseEvent
+eventInfo = string ":" *> skipSpace *> parseEvent
+	<|> takeTill (== '\n') *> return (Once,NoEvent)
 
 -- TODO: rewrite so that the different parsers can lie out of order in the text
 -- stream (a search function maybe needed)
