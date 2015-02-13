@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 import qualified Data.List as L
 import Control.Applicative
 
@@ -6,13 +8,23 @@ linechar = '-'
 colchar = '|'
 minutesperline = 30
 
+-- TODO: refine these type classes to set up the structure for printing a task
+class (Timeable t, Functor tt) => Taskable tt t p d where
+	showTask :: (tt t p d) -> String
+
+class Timeable t where
+	date :: (Show y, Integral y) => t -> y
+	time :: (Show y, Integral y) => t -> y
+	timesTolines :: (Integral y) => t -> t -> y
+	formatDesc :: t -> t -> String -> String
+
 -- a task is made of a start date, end date, description, and a priority
 -- taskTimes should be of at least length 2
-data Task dt t p d = Task
-	{taskTimes :: [TaskTime dt t]
-	,taskPrio :: p
+data Task tt p d = Task
+	{taskTimes :: [tt]
+	,taskPrio :: p 
 	,taskDesc :: d
-	} deriving (Eq, Ord, Show)
+	}	deriving (Eq, Ord, Show)
 
 data TaskTime d t = TaskTime
 	{taskTimeDate :: d
@@ -21,7 +33,7 @@ data TaskTime d t = TaskTime
 
 -- creates the display string for all of the TaskTime Pairs for a given 
 -- Task. Returns the list of display strings
-showTask :: (Integral dt, Integral t, Show dt, Show t, Show p, Show d) => (Task dt t p d) -> [String]
+showTask ::  => (Task dt t p d) -> [String]
 showTask (Task {taskTimes=tts,taskPrio=p,taskDesc=d}) = pTasks (tts,p,d)
 	where 
 		pTasks ([],_,_) = [""]
