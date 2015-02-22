@@ -11,7 +11,15 @@ data YadpConfig = YadpConfig
 	, pTimeLength :: Int 
 	, pPrioLength :: Int
 	, sndTimePos :: Int
-	}
+	} deriving (Show)
+
+pTimeLine ::  String -> String -> Reader YadpConfig String
+pTimeLine t p = do
+	plen <- asks pTimeLength
+	line <- lineFilled
+	return 
+		$ insertAt 7 (take plen t) 
+		$ insertAt 3 p line
 
 insertAt :: Int -> [a] -> [a] -> [a]
 insertAt index needle haystack = take (length haystack) $ prefix ++ needle ++ suffix
@@ -54,7 +62,51 @@ config = YadpConfig
 	, linechar = '-'
 	, colchar = '|'
 	, minutesperline = 30
-	, pTimeLength = 0
-	, pPrioLength = 0
-	, sndTimePos = 0
+	, pPrioLength = 3
+	, pTimeLength = 13
+	, sndTimePos = 14
 	}
+
+pFirstTime t = return . insertAt 0 (take 5 $ show t) 
+
+pSecondTime t = do
+	pline <- ptLine
+	sndtpos <- asks sndTimePos
+	return $ insertAt sndtpos (take 5 $ show t) pline
+
+ptLine :: Reader YadpConfig String
+ptLine = do
+	ptl <- asks pTimeLength
+	lch <- asks linechar
+	return $ L.replicate ptl lch 
+
+-- format the description given the time difference and the string
+formatDesc :: Int -> String -> Reader YadpConfig String
+formatDesc t d = do
+	nLines <- timesToLines t
+	fLines <- formatLines nLines d
+	blines <- appendLines nLines (length fLines)
+	return $ (L.intercalate "\n" fLines) ++ blines 
+	where 
+		appendLines n f
+			| n > f = ("\n"++) <$> (nBlankLines (n-f))
+			| otherwise = return ""
+
+formatLines :: Int -> String -> Reader YadpConfig [String]
+formatLines nLines s = do
+	cw <- asks colwidth
+	sequence $ putInLine <$> splitEvery cw (take (nLines*cw) s)
+
+-- TODO:: rewrite round function to estimate # lines better
+timesToLines :: Int -> Reader YadpConfig Int
+timesToLines n = (asks minutesperline) >>= \mpl -> return . round . (/(toRational mpl)) . toRational $ n
+
+-- takes a list and splits it into a list of lists each with a length of at
+-- least n
+-- used above to format the description
+splitEvery :: Int -> [a] -> [[a]]
+splitEvery _ [] = []
+splitEvery n xs = (fst sp) : splitEvery n (snd sp)
+	where sp = L.splitAt n xs
+
+

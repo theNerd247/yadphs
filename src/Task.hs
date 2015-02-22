@@ -16,12 +16,14 @@ import Control.Applicative
 import Control.Monad.Reader
 
 data YadpConfig = YadpConfig
-{
-	colwidth :: Int
-	linechar :: Char
-	colchar :: Char 
-	minutesperline :: Int 
-	pPrioLength :: Int
+	{
+		colwidth :: Int
+		, linechar :: Char
+		, colchar :: Char 
+		, minutesperline :: Int 
+		, pPrioLength :: Int
+		, pTimeLength :: Int
+		, sndTimePos :: Int
 }
 
 defaultConfig = YadpConfig
@@ -33,7 +35,6 @@ defaultConfig = YadpConfig
 	, pTimeLength = 13
 	, sndTimePos = 14
 	}
-
 
 -- | Anything that can represent the time structure of a task. This can include
 -- anything (like due dates, event start and end times, recuring due dates, etc.)
@@ -114,26 +115,42 @@ date = fst . __tPair
 {-instance Num -}
 
 -- takes the time format string and the priority for a task and creates a filled
--- line 
-pTimeLine ::  String -> String -> String
-pTimeLine t p = insertAt 7 (take pTimeLength t)
-	$ insertAt 3 p lineFilled
+-- line
+pTimeLine ::  String -> String -> Reader YadpConfig String
+pTimeLine t p = do
+	plen <- asks pTimeLength
+	line <- lineFilled
+	return 
+		$ insertAt 7 (take plen t)
+		$ insertAt 3 p line
 
 -- left and right spots on the time line
 -- (helper functions for showing Timeable types)
-pFirstTime t = insertAt 0 (take 5 $ show t) 
-pSecondTime t = insertAt sndTimePos (take 5 $ show t) ptLine
-ptLine = replicate pTimeLength linechar
+pFirstTime t = return . insertAt 0 (take 5 $ show t) 
+
+pSecondTime t = do
+	pline <- ptLine
+	sndtpos <- asks sndTimePos
+	return $ insertAt sndtpos (take 5 $ show t) pline
+
+ptLine :: Reader YadpConfig String
+ptLine = do
+	ptl <- asks pTimeLength
+	lch <- asks linechar
+	return $ L.replicate ptl lch 
 
 -- format the description given the time difference and the string
 formatDesc :: (Real t) => t -> String -> Reader YadpConfig String
 formatDesc t d = do
-	colw <- asks colwidth
-	return $ truncLines $ (L.intercalate "\n" $ putInLine <$> formatLines) ++ blines 
+	flines <- formatLines
+	bls <- blines 
+	return $ truncLines $ (L.intercalate "\n" $ putInLine <$> formatLines colw) ++ bls
 	where
-		formatLines = splitEvery colw d
-		blines = ('\n':) . nBlankLines $ n 
+		formatLines = (asks colwidth) >>= return . flip splitEvery d
 		n = (timesToLines t) - (length formatLines)
+		blines = do
+			nblns <- nBlankLines n
+			return $ '\n':nblns
 		truncLines = unlines . (\s -> take (sn s) s) . lines 
 		sn = (n+) . length
 
