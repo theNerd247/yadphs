@@ -5,14 +5,15 @@ module Task
 	, Taskable(..)
 	, Task(..)
 	, TimePair(..)
-	, pFirstTime
-	, pSecondTime
-	, ptLine
+	, YadpConfig(..)
+	, time
+	, date
+	, defaultConfig
 )
 where
 
 import qualified Data.List as L
-import Control.Applicative
+import Control.Applicative 
 import Control.Monad.Reader
 
 data YadpConfig = YadpConfig
@@ -21,9 +22,8 @@ data YadpConfig = YadpConfig
 		, linechar :: Char
 		, colchar :: Char 
 		, minutesperline :: Int 
-		, pPrioLength :: Int
-		, pTimeLength :: Int
-		, sndTimePos :: Int
+		, pTimePose :: Int
+		, pTimeLen :: Int
 }
 
 defaultConfig = YadpConfig
@@ -31,18 +31,19 @@ defaultConfig = YadpConfig
 	, linechar = '-'
 	, colchar = '|'
 	, minutesperline = 30
-	, pPrioLength = 3
-	, pTimeLength = 13
-	, sndTimePos = 14
+	, pTimePose = 9
+	, pTimeLen = 20-7
 	}
 
 -- | Anything that can represent the time structure of a task. This can include
 -- anything (like due dates, event start and end times, recuring due dates, etc.)
-class (Show t) => Timeable t where
+class Timeable t where
 	-- | the amount of time the Timeable covers. For a task that just has a due
 	-- date this will be 0 for an event it will be the length of the event (in
 	-- minutes)
-	toMinutes :: (Integral y) => t -> y
+	toMinutes :: t -> Int
+	showFirstStartTime :: t -> String
+	showSecondStartTime :: t -> String
 
 -- | a Taskable type must have: a Timeable structure, a priority, and a
 -- description (all of which much be showable). This class is the main structure
@@ -61,7 +62,7 @@ class Taskable t where
 	-- 
 	-- Example: (Taskable T) => showTask T
 	--
-	-- > |-(A)-10:30-----01:45-|
+	-- > |-(A)-----10:30-01:45-|
 	-- > |Lorem ipsum dolor sit|
 	-- > | amet, consetetur sad|
 	-- > |ipscing elitr,       |
@@ -71,24 +72,23 @@ class Taskable t where
 	-- > |                     |
 	-- > |---------------------|
 	-- 
-	showTask :: (Timeable tt, Show tt, Show p, Show d) => (t tt p d) -> String
-	showTask t = 
-			(pt tm p) -- print the line with priority and time info
-			++ ddblk -- print the description (formatted)
-			++ lf -- put a blank line at the end
+	showTask :: (Timeable tt, Show p, Show d) => (t tt p d) -> Reader YadpConfig String
+	showTask t = do
+			-- print the time line 
+			timeLine <- pTimeLine tm (show p)
+			-- print the description block
+			dblk <- formatDesc (toMinutes tm) (show d)
+			-- print a newline and an endline if needed
+			endl <- endLine dblk
+			return $ timeLine ++ (chkblk dblk) ++ endl
 		where 
 			tm = getTime t
 			p = getPrio t
 			d = getDesc t
-			pt t = pTimeLine (show t) . show
-			dd t = formatDesc (toMinutes t) . show
-			dblk = dd tm d
-			ddblk -- insert a new line for the description block if it's not empty
-				| (length dblk > 0) = '\n':dblk
-				| otherwise = ""
-			lf -- a filled line for the bottom of a task (doesn't show if there is no description block)
-				| (length dblk > 0) = lineFilled
-				| otherwise = ""
+			chkblk "" = ""
+			chkblk d = "\n"++d
+			endLine "" = return ""
+			endLine d = pure ("\n"++) <*> lineFilled
 
 -- | The main task structure. No other structure should be needed unless the
 -- you need a more specific way to implement the Timeable, priority, and/or
@@ -116,47 +116,36 @@ date = fst . __tPair
 
 -- takes the time format string and the priority for a task and creates a filled
 -- line
-pTimeLine ::  String -> String -> Reader YadpConfig String
+pTimeLine :: (Timeable t) => t -> String -> Reader YadpConfig String
 pTimeLine t p = do
-	plen <- asks pTimeLength
+	plen <- asks pTimeLen
+	pos <- asks pTimePose
 	line <- lineFilled
 	return 
-		$ insertAt 7 (take plen t)
+		$ insertAt pos (take plen $ f t)
 		$ insertAt 3 p line
-
--- left and right spots on the time line
--- (helper functions for showing Timeable types)
-pFirstTime t = return . insertAt 0 (take 5 $ show t) 
-
-pSecondTime t = do
-	pline <- ptLine
-	sndtpos <- asks sndTimePos
-	return $ insertAt sndtpos (take 5 $ show t) pline
-
-ptLine :: Reader YadpConfig String
-ptLine = do
-	ptl <- asks pTimeLength
-	lch <- asks linechar
-	return $ L.replicate ptl lch 
+		where 
+			f = (\a b -> a ++ "-" ++ b) <$> showFirstStartTime <*> showSecondStartTime
 
 -- format the description given the time difference and the string
-formatDesc :: (Real t) => t -> String -> Reader YadpConfig String
+formatDesc :: Int -> String -> Reader YadpConfig String
 formatDesc t d = do
-	flines <- formatLines
-	bls <- blines 
-	return $ truncLines $ (L.intercalate "\n" $ putInLine <$> formatLines colw) ++ bls
-	where
-		formatLines = (asks colwidth) >>= return . flip splitEvery d
-		n = (timesToLines t) - (length formatLines)
-		blines = do
-			nblns <- nBlankLines n
-			return $ '\n':nblns
-		truncLines = unlines . (\s -> take (sn s) s) . lines 
-		sn = (n+) . length
+	nLines <- timesToLines t
+	fLines <- formatLines nLines d
+	blines <- appendLines nLines (length fLines)
+	return $ (L.intercalate "\n" fLines) ++ blines 
+	where 
+		appendLines n f
+			| n > f = ("\n"++) <$> (nBlankLines (n-f))
+			| otherwise = return ""
 
--- converts a time difference (in minutes) into a number of lines
-timesToLines :: (Real n) => n -> Int
-timesToLines = round . (/minutesperline) . toRational
+		formatLines :: Int -> String -> Reader YadpConfig [String]
+		formatLines nLines s = do
+			cw <- asks colwidth
+			sequence $ putInLine <$> splitEvery cw (take (nLines*cw) s)
+
+		timesToLines :: Int -> Reader YadpConfig Int
+		timesToLines n = (asks minutesperline) >>= \mpl -> return . (\a -> a-1) . round . (/(toRational mpl)) . toRational $ n
 
 nBlankLines :: Int -> Reader YadpConfig String
 nBlankLines x
@@ -205,8 +194,3 @@ splitEvery _ [] = []
 splitEvery n xs = (fst sp) : splitEvery n (snd sp)
 	where sp = L.splitAt n xs
 
--- testing stuffs
-{-dt = fromGregorian 2015 02 10-}
-{-tt = TimeOfDay 12 30 0-}
-{-tm = OnceTime dt tt-}
-{-tsk = Task tm 'A' "blarg nad fa;ksdjf ;ajsd"-}

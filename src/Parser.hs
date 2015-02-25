@@ -17,6 +17,7 @@ import Data.Time.Calendar
 import Data.Time.Clock
 import System.IO.Unsafe
 import Task
+import Times
 
 -- a testing function 
 tst x = maybeResult . (parse x) 
